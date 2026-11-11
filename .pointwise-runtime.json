@@ -4,8 +4,7 @@
   "setup": [],
   "verify": [
     "python3",
-    "checks.py",
-    "verify"
+    "verify_all.py"
   ],
   "demo": [
     "python3",

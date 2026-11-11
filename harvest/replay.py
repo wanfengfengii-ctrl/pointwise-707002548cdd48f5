@@ -1,6 +1,9 @@
 import json
 import sqlite3
-from .legacy import Collector, HarvestError
+
+from .adapters.sqlite import SqliteRepository
+from .application import Runner
+from .ports import HarvestError
 
 
 class ScriptedPortal:
@@ -26,19 +29,21 @@ def replay(scenario):
     portal = ScriptedPortal(scenario["actions"])
     db = sqlite3.connect(":memory:")
     outputs = []
-    collector = Collector(db, portal)
+    repository = SqliteRepository(db)
+    runner = Runner(repository, portal)
     for invocation in scenario["runs"]:
         # Reopen the identical persisted database; the remote system is not rewound.
         image = "\n".join(db.iterdump())
         db.close()
         db = sqlite3.connect(":memory:")
         db.executescript(image)
-        collector = Collector(db, portal)
+        repository = SqliteRepository(db)
+        runner = Runner(repository, portal)
         try:
-            result = collector.run(**invocation)
+            result = runner.run(**invocation)
         except HarvestError as error:
             result = {"error": str(error)}
-        outputs.append({"result": result, "snapshot": collector.snapshot(),
+        outputs.append({"result": result, "snapshot": repository.snapshot(),
                         "calls": len(portal.calls)})
     if len(portal.calls) != len(portal.actions):
         raise AssertionError("unconsumed portal actions")
